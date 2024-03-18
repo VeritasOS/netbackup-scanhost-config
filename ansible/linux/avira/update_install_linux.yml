@@ -1,0 +1,47 @@
+- name: Start Update Install
+  block:
+    - name: grep NB_MALWARE_SCANNER_PATH
+      shell: 'grep NB_MALWARE_SCANNER_PATH {{home_directory}}/.bashrc'
+      register: op
+
+    - name: set existing malware scanner installation path
+      set_fact:
+        existing_malware_scanner_path: "{{op.stdout.split('=')[-1]}}"
+
+    - name: Extract savapi-linuxR-x64
+      unarchive:
+        src: "{{ avira_package_extract_location }}/{{avira_package_name_without_zip}}_LinuxR_x86/savapi-sdk-linux64.zip"
+        dest: "{{ avira_package_extract_location }}/{{avira_package_name_without_zip}}_LinuxR_x86"
+        remote_src: yes
+      when: existing_malware_scanner_path is defined and ansible_os_family == 'RedHat'
+
+    - name: Extract savapi-linuxS-x64
+      unarchive:
+        src: "{{ avira_package_extract_location }}/{{avira_package_name_without_zip}}_LinuxS_x86/savapi-sdk-linux64.zip"
+        dest: "{{ avira_package_extract_location }}/{{avira_package_name_without_zip}}_LinuxS_x86"
+        remote_src: yes
+      when: existing_malware_scanner_path is defined and ansible_os_family == 'Suse'
+
+    - name: Copy Avira Package to existing NB_MALWARE_SCANNER_PATH for RHEL
+      shell: 'cp -r {{ avira_package_extract_location }}/{{avira_package_name_without_zip}}_LinuxR_x86/savapi-sdk-linux64/bin/* {{existing_malware_scanner_path}}'
+      when: existing_malware_scanner_path is defined and ansible_os_family == 'RedHat'
+
+    - name: Copy Avira Package to existing NB_MALWARE_SCANNER_PATH for Suse
+      shell: 'cp -r {{ avira_package_extract_location }}/{{avira_package_name_without_zip}}_LinuxS_x86/savapi-sdk-linux64/bin/* {{existing_malware_scanner_path}}'
+      when: existing_malware_scanner_path is defined and ansible_os_family == 'Suse'
+
+    - name: Update Virus Info
+      debug:
+        msg: 'Updating VDFs, this may take minutes'
+
+    - name: Run update.sh
+      shell: "cd {{ existing_malware_scanner_path }} && sh update.sh"
+      ignore_errors: True
+      become_user: '{{scan_user is defined | ternary(scan_user, "root")}}'
+      become: yes
+  rescue:
+    - debug:
+        msg: "Update installation failed, proceeding with the fresh install"
+
+    - name: Fresh Install Avira
+      import_tasks: fresh_install_linux.yml

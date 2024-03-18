@@ -1,0 +1,22 @@
+- name: Create Extract Location for Avira Package
+  win_file:
+    path: "{{home_directory}}\\avira\\"
+    state: directory
+    mode: '0777'
+
+- name: Extract Avira Package
+  win_unzip:
+    src: "{{home_directory}}\\malware\\{{ avira_base_package_name }}"
+    dest: "{{home_directory}}\\avira\\"
+
+- name: Extract Savapi Package
+  win_unzip:
+    src: "{{home_directory}}\\avira\\{{avira_package_name_without_zip}}_AMD64\\savapi-sdk-win64.zip"
+    dest: "{{home_directory}}\\avira\\{{avira_package_name_without_zip}}_AMD64\\savapi-sdk-win64"
+
+- name: Set/Update NB_MALWARE_SCANNER_PATH
+  win_environment:
+    state: present
+    name: NB_MALWARE_SCANNER_PATH
+    value: "{{home_directory}}\\avira\\{{avira_package_name_without_zip}}_AMD64\\savapi-sdk-win64\\bin"
+    level: user

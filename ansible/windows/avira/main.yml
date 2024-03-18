@@ -1,0 +1,54 @@
+- set_fact:
+    avira_base_package_name: "{{avira_package_path.split('/')[-1]}}"
+
+- set_fact:
+    avira_package_name_without_zip: "{{avira_base_package_name.split('.zip')|first}}"
+
+- name: Create malware directory for windows
+  win_file:
+    path: "{{home_directory}}\\malware"
+    state: directory
+    mode: '0777'
+
+- name: Copy Avira Package for windows
+  win_copy:
+    src: "{{avira_package_path}}"
+    dest: "{{home_directory}}\\malware\\"
+
+- name: Run as non admin user
+  block:
+    - name: Check if NB_MALWARE_SCANNER_PATH exists
+      win_reg_stat:
+        path: HKCU:\Environment
+        name: NB_MALWARE_SCANNER_PATH
+      register: env_vars_of_scan_user
+
+    - set_fact:
+        existing_malware_scanner_path: '{{ env_vars_of_scan_user.value }}'
+      when: env_vars_of_scan_user.exists == True
+
+    - name: Update Installation Package
+      import_tasks: update_install_windows.yml
+      when: env_vars_of_scan_user.exists == True
+
+    - debug:
+        msg: "ENV NB_MALWARE_SCANNER_PATH DOES NOT EXISTS...GOING FOR FRESH INSTALLATION"
+      when: env_vars_of_scan_user.exists == False
+
+    - name: Fresh install on windows non admin user
+      import_tasks: fresh_install_windows.yml
+      when: env_vars_of_scan_user.exists == False
+
+    - name: Update Virus Info
+      debug:
+        msg: 'Updating VDFs, this may take minutes'
+
+    - name: Run %NB_MALWARE_SCANNER_PATH%\\update.bat
+      win_command:
+        chdir: "%NB_MALWARE_SCANNER_PATH%"
+        cmd: "update.bat"
+      ignore_errors: true
+
+  become_user: '{{ scan_user is defined | ternary (scan_user, "Administrator")}}'
+  become: true
+  become_method: runas

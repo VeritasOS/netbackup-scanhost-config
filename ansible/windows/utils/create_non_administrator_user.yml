@@ -1,0 +1,69 @@
+- name: Create Scan Group
+  win_group:
+    name: '{{ scan_group }}'
+    description: 'Scan Users Group'
+    state: present
+
+- name: Create Scan User when password is provided
+  win_user:
+    name: '{{ scan_user }}'
+    password: '{{ scan_user_password }}'
+    home_directory: 'C:\Users\{{ scan_user }}'
+    description: 'Scan User'
+    password_expired: no
+    password_never_expires: yes
+    state: present
+    groups:
+      - '{{ scan_group }}'
+      - Administrators
+  register: user_details
+  when: scan_user_password is defined and scan_user_password | length > 0
+
+- name: Create Scan User when password is not provided
+  win_user:
+    name: '{{ scan_user }}'
+    home_directory: 'C:\Users\{{ scan_user }}'
+    description: 'Scan User'
+    state: present
+    groups:
+      - '{{ scan_group }}'
+      - Administrators
+  register: user_details
+  when: scan_user_password is undefined or scan_user_password == ''
+
+# We need to create profile directory explicitly
+# win_user will not create the profile dir just the user. The profile is created on the first logon and if the folder
+# at C:\Users\<username> already exists then it will append the hostname.
+# If that folder exists then it will append .001 and so on.
+- name: Create Profile Directory
+  win_user_profile:
+    username: '{{ scan_user }}'
+    state: present
+  register: user_profile_directory
+
+- name: Set User Home Directory
+  set_fact:
+    home_directory: '{{ user_profile_directory.path }}'
+
+- name: Debug user profile dir
+  debug:
+    msg: "PROFILE DIR: {{ home_directory }}, {{user_profile_directory}}"
+
+- name: Check if user can create C:\\malware dir
+  win_file:
+    path: C:\\malware
+    state: directory
+  become_user: '{{ scan_user is defined | ternary (scan_user, "Administrator")}}'
+  become_method: runas
+
+- name: Check if user can create C:\\malware\\test.txt
+  win_copy:
+    content: "Checking if user has permission to create this file"
+    dest: C:\\malware\\test.txt
+    remote_src: true
+  register: check_permissions_of_c_malware_dir
+  become_user: '{{ scan_user is defined | ternary (scan_user, "Administrator")}}'
+  become_method: runas
+
+- debug:
+    msg: "output of check permissions of C:\\malware: {{ check_permissions_of_c_malware_dir }}"

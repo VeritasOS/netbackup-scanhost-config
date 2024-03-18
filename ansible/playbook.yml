@@ -1,0 +1,26 @@
+- import_playbook: linux/main.yml
+
+- import_playbook: windows/main.yml
+
+- hosts: all
+  gather_facts: no
+  vars:
+     ansible_connection: local
+  tasks:
+    - name: Check if grep ssh-rsa works
+      shell: "ssh-keyscan {{ ansible_ssh_host }} 2>/dev/null | grep ssh-rsa"
+      register: grep_ssh_rsa
+
+    - debug:
+        msg: "Not calculating RSA key as grep not retuned anything"
+      when: grep_ssh_rsa.stdout | length == 0
+
+    - name: Calculate RSA Key
+      shell: "ssh-keyscan {{ ansible_ssh_host }} 2>/dev/null | grep ssh-rsa | awk '{print $3}' | base64 -d | sha256sum"
+      register: sshKeyscanOutput
+      when: grep_ssh_rsa.stdout | length > 0
+
+    - name: Use Below Credentials to register scan-host in the webui
+      debug:
+        msg: 'HostName: {{ ansible_ssh_host }}, UserName: {{scan_user is defined | ternary(scan_user, "root")}}, RSA Key : {{ sshKeyscanOutput.stdout[:-1] | trim }}, Use value of `scan_user_password` for password from inventory/hosts.yml'
+      when: grep_ssh_rsa.stdout | length > 0

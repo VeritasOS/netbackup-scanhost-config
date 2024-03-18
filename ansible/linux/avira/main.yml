@@ -1,0 +1,46 @@
+- set_fact:
+    avira_base_package_name: "{{avira_package_path.split('/')[-1]}}"
+
+- set_fact:
+    avira_package_name_without_zip: "{{avira_base_package_name.split('.zip')|first}}"
+
+- name: Create malware directory
+  file:
+    path: "{{ linux_tmp_location }}"
+    recurse: no
+    state: directory
+    mode: '777'
+
+- name: Copy Avira Package
+  copy:
+    src: "{{ avira_package_path }}"
+    dest: "{{ linux_tmp_location }}"
+
+- name: Create Extract Directory for Avira Package
+  file:
+    path: "{{ avira_package_extract_location }}"
+    recurse: yes
+    state: directory
+    mode: '0777'
+
+- name: Extract Avira Package
+  unarchive:
+    src: "{{ linux_tmp_location}}/{{ avira_base_package_name }}"
+    dest: "{{ avira_package_extract_location }}"
+    remote_src: yes
+
+- name: Check for existance of NB_MALWARE_SCANNER_PATH environment variable
+  shell: 'cat {{home_directory}}/.bashrc'
+  register: env_vars_for_scanuser
+
+- name: Fresh Install on linux platforms
+  import_tasks: fresh_install_linux.yml
+  when: env_vars_for_scanuser.stdout.find('NB_MALWARE_SCANNER_PATH') == -1
+
+- name: Upgrade on linux Platforms
+  import_tasks: update_install_linux.yml
+  when: env_vars_for_scanuser.stdout.find('NB_MALWARE_SCANNER_PATH') != -1
+
+- name: Source bashrc
+  shell: source {{ home_directory }}/.bashrc
+  ignore_errors: True

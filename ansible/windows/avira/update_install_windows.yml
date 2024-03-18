@@ -1,0 +1,15 @@
+- name: Extract Avira Package
+  win_unzip:
+    src: "{{home_directory}}\\malware\\{{ avira_base_package_name }}"
+    dest: "{{home_directory}}\\malware\\"
+
+- name: Extract Savapi Package
+  win_unzip:
+    src: "{{home_directory}}\\malware\\{{avira_package_name_without_zip}}_AMD64\\savapi-sdk-win64.zip"
+    dest: "{{home_directory}}\\malware\\{{avira_package_name_without_zip}}_AMD64\\savapi-sdk-win64"
+
+- name: Copy Avira Package to existing NB_MALWARE_SCANNER_PATH for Windows
+  win_copy:
+    src: "{{home_directory}}\\malware\\{{avira_package_name_without_zip}}_AMD64\\savapi-sdk-win64\\bin\\"
+    dest: '{{ existing_malware_scanner_path }}'
+    remote_src: true

@@ -1,0 +1,40 @@
+- name: Create temporary directory
+  win_file:
+    path: "{{ openssh_temporary_dir }}"
+    state: directory
+
+- name: Get openssh for windows release
+  win_get_url:
+    url: "{{ openssh_download_url }}"
+    dest: "{{ openssh_temporary_dir }}\\openssh.zip"
+    force: no
+
+- name: Unzip openssh in extraction dir
+  win_unzip:
+    src: "{{ openssh_temporary_dir }}\\openssh.zip"
+    dest: "{{ openssh_extract_dir }}"
+    creates: "{{ openssh_extract_dir }}"
+
+- name: Run installation script && Configure SSH Port
+  win_shell: |
+    $currentOpenSSH = Get-Command ssh.exe -ErrorAction SilentlyContinue
+    if (-not $currentOpenSSH) {
+        Write-Host "`nOpenSSH is currently not present`n"
+    } else {
+        $path = $currentOpenSSH.Source.Replace("\\", "\")
+        $version = $currentOpenSSH.Version
+        Write-Host "`nFound OpenSSH at $path | Version : $version"
+        $currentOpenSSHPath = $currentOpenSSH.Source.Replace("\ssh.exe", "")
+        $oldPath = (Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH).path
+        $newPath = ($oldPath.Split(';') | Where-Object { -not ($_ -like "$currentOpenSSHPath*" ) }) -join ';'
+        Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH -Value "$newPath;"
+    }
+    powershell.exe -ExecutionPolicy Bypass -File {{ openssh_extract_dir }}\\{{ openssh_archive_name }}\\install-sshd.ps1
+    New-NetFirewallRule -DisplayName "SSH TCP PORT 22" -Direction inbound -Profile Any -Action Allow -LocalPort 22 -Protocol TCP
+    Enable-NetFirewallRule -DisplayName "SSH TCP PORT 22"
+  register: test_var_ssh_port
+  notify:
+    - restart sshd
+
+- debug:
+    msg: "Install openssh output: {{test_var_ssh_port}} "

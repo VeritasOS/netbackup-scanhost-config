@@ -1,0 +1,42 @@
+- name: Install openssh if not exists
+  block:
+    - name: Check if keyscan works
+      win_shell: "ssh-keyscan {{ ansible_ssh_host }}"
+      register: keyscan_op
+
+    - name: Debug keyscan_op
+      debug:
+        msg: "Ssh-keyscan works, not configuring openssh"
+      when: override_openssh is undefined or override_openssh == False
+
+    - debug:
+        msg: "Override openssh requested"
+      when: override_openssh is defined and override_openssh == True
+
+    - name: Override openssh
+      import_tasks: openssh/install_openssh.yml
+      when: override_openssh is defined and override_openssh == True
+  rescue:
+    - name: Install and Configure OpenSSH
+      import_tasks: openssh/install_openssh.yml
+
+- name: Create Non Administrator User
+  import_tasks: create_non_administrator_user.yml
+  when: scan_user is defined and scan_group is defined and scan_user != 'Administrator'
+
+- name: Install VC runtime
+  win_package:
+    path: https://aka.ms/vs/17/release/vc_redist.x64.exe
+    state: present
+    arguments: /install /passive
+  ignore_errors: true
+  register: install_vc_runtime_op
+  when: install_vc_runtime is defined and install_vc_runtime == True
+
+- debug:
+    msg: "Install VC Runtime Output: {{ install_vc_runtime_op }}"
+  when: install_vc_runtime is defined and install_vc_runtime == True
+
+- name: Configure NFS
+  import_tasks: configure_nfs.yml
+  when: configure_nfs is defined and configure_nfs == True

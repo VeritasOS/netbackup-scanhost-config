@@ -1,0 +1,48 @@
+- name: Create Avira Installation Directory
+  file:
+    path: "{{ home_directory }}/avira"
+    state: directory
+    mode: '0777'
+    owner: '{{scan_user is defined | ternary(scan_user, "root")}}'
+    group: '{{scan_group is defined | ternary(scan_group, "root")}}'
+  when: existing_malware_scanner_path is undefined
+
+- name: Install Avira Package on RedHat
+  unarchive:
+    src: "{{ avira_package_extract_location }}/{{avira_package_name_without_zip}}_LinuxR_x86/savapi-sdk-linux64.zip"
+    dest: "{{ home_directory }}/avira"
+    remote_src: yes
+    owner: '{{scan_user is defined | ternary(scan_user, "root")}}'
+    group: '{{scan_group is defined | ternary(scan_group, "root")}}'
+  when: existing_malware_scanner_path is undefined and ansible_os_family == 'RedHat'
+
+- name: Install Avira Package on SuSE
+  unarchive:
+    src: "{{ avira_package_extract_location }}/{{avira_package_name_without_zip}}_LinuxS_x86/savapi-sdk-linux64.zip"
+    dest: "{{ home_directory }}/avira"
+    remote_src: yes
+    owner: '{{scan_user is defined | ternary(scan_user, "root")}}'
+    group: '{{scan_group is defined | ternary(scan_group, "root")}}'
+  when: existing_malware_scanner_path is undefined and ansible_os_family == 'Suse'
+
+- name: debug home_directory
+  debug:
+    msg: 'HOME_DIR IS: {{ home_directory }}'
+
+- name: Set Environment Variables NB_MALWARE_SCANNER_PATH
+  lineinfile: dest={{ home_directory }}/.bashrc line='export NB_MALWARE_SCANNER_PATH={{ home_directory }}/avira/savapi-sdk-linux64/bin' insertafter='EOF' state=present
+  when: existing_malware_scanner_path is undefined
+
+- name: Append to PATH env var
+  lineinfile: dest={{ home_directory }}/.bashrc line='export PATH=$PATH:{{ home_directory }}/avira/savapi-sdk-linux64/bin' insertafter='EOF' state=present
+  when: existing_malware_scanner_path is undefined
+
+- name: Update Virus Info
+  debug:
+    msg: 'Updating VDFs, this may take minutes'
+
+- name: Run update.sh
+  shell: "cd {{ home_directory }}/avira/savapi-sdk-linux64/bin && sh update.sh"
+  ignore_errors: True
+  become_user: '{{scan_user is defined | ternary(scan_user, "root")}}'
+  become: yes

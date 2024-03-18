@@ -1,0 +1,50 @@
+- name: Install NFS-Client
+  win_feature:
+    name: NFS-Client
+    state: present
+  register: configure_nfs_client_output
+
+- name: Debug configure_nfs_client_output
+  debug:
+    msg: "configure_nfs_client_output: {{ configure_nfs_client_output }}"
+
+- name: Enable local passwd file mapping
+  win_command: powershell.exe Set-NfsMappingStore -EnableUNMLookup  $True  -UNMServer localhost
+
+- name: Check nfsadmin mapping
+  win_command: nfsadmin mapping
+  register: nfsadmin_mapping_op
+
+- name: Debug nfsadmin mapping
+  debug:
+    msg: "nfsadmin mapping op: {{ nfsadmin_mapping_op }}"
+
+- name: Create or append user entry in passwd file
+  win_copy:
+    content: "{{ scan_user }}:x:{{ user_uid }}:{{ user_uid }}:Description:{{ home_directory }}"
+    dest: "{{ systemroot_directory }}\\System32\\drivers\\etc\\passwd"
+    backup: True
+
+- name: Create or append user entry in group file
+  win_copy:
+    content: "{{ scan_user }}:x:{{ user_uid }}:{{ user_uid }}"
+    dest: "{{ systemroot_directory }}\\System32\\drivers\\etc\\group"
+    backup: True
+
+- name: restart nfs services
+  win_shell: |
+    nfsadmin client stop
+    nfsadmin client start
+  ignore_errors: True
+  register: nfsadmin_restart_output
+
+- debug:
+    msg: "nfsadmin restart output: {{ nfsadmin_restart_output }}"
+
+- name: verifying id mapping
+  win_command: "powershell.exe Get-NfsMappedIdentity -AccountName {{ scan_user }} -AccountType User"
+  ignore_errors: True
+  register: nfs_mapped_identity_output
+
+- debug:
+    msg: "nfs mapped identity output: {{ nfs_mapped_identity_output }}"

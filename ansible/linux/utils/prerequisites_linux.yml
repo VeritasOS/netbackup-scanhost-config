@@ -1,0 +1,20 @@
+- name: Install libnsl
+  yum:
+    name: libnsl*
+    state: present
+
+- name: Configure NFS Client
+  yum:
+    name: nfs-utils
+    state: present
+  when: install_nfs_client is defined and install_nfs_client == True
+
+- name: Configure SMB Client
+  yum:
+    name: cifs-utils
+    state: present
+  when: configure_smb_client is defined and configure_smb_client == True
+
+- name: Configure non-root user
+  import_tasks: create_non_root_user.yml
+  when: scan_group is defined and scan_user is defined and scan_user != 'root'

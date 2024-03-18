@@ -1,0 +1,22 @@
+- hosts: linuxScanHosts
+  gather_facts: true
+  become: true
+  vars:
+    avira_package_extract_location: /tmp/malware/avira
+    linux_tmp_location: /tmp/malware
+  tasks:
+    - set_fact:
+        home_directory: /root
+
+    - name: Install prerequisites for linux scan host
+      import_tasks: utils/prerequisites_linux.yml
+
+    - name: Start Avira Installation
+      import_tasks: avira/main.yml
+      when: install_avira is defined and install_avira == True
+
+  handlers:
+    - name: Restart sshd
+      service:
+        name: sshd
+        state: restarted

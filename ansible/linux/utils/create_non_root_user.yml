@@ -1,0 +1,36 @@
+- name: Create scangroup if not exists
+  group:
+    name: "{{ scan_group }}"
+
+- name: Create scanuser if not exists and add it to scangroup when password is provided
+  user:
+    name: "{{ scan_user }}"
+    group: "{{ scan_group }}"
+    password: "{{ scan_user_password | password_hash('sha512') }}"
+  register: user1
+  when: scan_user_password is defined and scan_user_password | length > 0
+
+- name: update home directory when scan_user_password is provided
+  set_fact:
+    home_directory: '{{user1.home}}'
+  when: scan_user_password is defined and scan_user_password | length > 0
+
+- name: Create scanuser if not exists and add it to scangroup when password is not provided
+  user:
+    name: "{{ scan_user }}"
+    group: "{{ scan_group }}"
+  register: user2
+  when: scan_user_password is undefined or scan_user_password == ''
+
+- name: update home directory when scan_user_password is not provided
+  set_fact:
+    home_directory: '{{user2.home}}'
+  when: scan_user_password is undefined or scan_user_password == ''
+
+- name: Add entry in /etc/sudoers
+  lineinfile:
+    path: /etc/sudoers
+    line: "{{ scan_user }} ALL=(ALL) NOPASSWD:/bin/umount, /bin/mount"
+    state: present
+  notify:
+    - Restart sshd
