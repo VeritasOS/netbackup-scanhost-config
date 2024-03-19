@@ -1,0 +1,41 @@
+#
+# $Copyright: Copyright (c) 2024 Veritas Technologies LLC. All rights reserved VT25-0977-2658-84-51-3 $
+#
+
+- hosts: windowsScanHosts
+  gather_facts: true
+  vars:
+    savapi_zip_name: \savapi-sdk-win64.zip
+
+    openssh_temporary_dir: "C:\\Temp"
+    openssh_archive_name: "OpenSSH-Win64"
+    openssh_extract_dir: "C:\\OpenSSH"
+
+    # Variables used for installation
+    avira_package_extract_location: C:\Avira\
+
+  tasks:
+    - set_fact:
+        home_directory: '{{ ansible_env.USERPROFILE }}'
+        systemroot_directory: '{{ ansible_env.SystemRoot }}'
+
+    - set_fact:
+        user_uid: '1000'
+      when: user_uid is not defined
+
+    - name: Configure variables
+      set_fact:
+        scan_user: 'Administrator'
+      when: scan_user is not defined
+
+    - name: Install Prerequisites
+      import_tasks: utils/prerequisites_windows.yml
+
+    - name: Start Avira Installation
+      import_tasks: avira/main.yml
+      when: install_avira is defined and install_avira == True
+  handlers:
+    - name: restart sshd
+      win_service:
+        name: sshd
+        state: restarted

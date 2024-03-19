@@ -8,11 +8,15 @@
 - Additionally, this utility can be used to install `NetBackup Malware Scanner` on the scan host.
 - The following would be installed/configured by the utility on the scan hosts
     1. Linux scan hosts:
-        a. Prerequisites installed: libnsl, NFS client, SMB client.
-        b. Configuration: Non root user creation.
+        <ul>
+        <li>Prerequisites installed: libnsl, NFS client, SMB client. </li>
+        <li>Configuration: Non root user creation. </li>
+        </ul>
     2. Windows scan hosts:
-        a. Prerequisites installed: OpenSSH, NFS-Client, VC Runtime.
-        b. Configurations: Non-administrator user creation.
+        <ul>
+        <li> Prerequisites installed: OpenSSH, NFS-Client, <a href="https://aka.ms/vs/17/release/vc_redist.x64.exe"> VC Runtime </a>. </li>
+        <li> Configurations: Non-administrator user creation. </li>
+        </ul>
 
 ## Prerequisites to be present on the ansible controller node (node on which this utility runs)
 - RHEL Version = 8.x, 9.x
@@ -21,13 +25,15 @@
 - sshpass      = 1.x
 - pywinrm      = 0.4.x
 - requests     = 2.31.x (optional)
+- SSH must be allowed to the `ansible_user` in case of linux scan hosts.
+- Winrm connectivity should be allowed to the `ansible_user` in case of windows hosts.
 
 > **_NOTE:_** Run `install_ansible.sh` for installing above prerequisites on the ansible controller node.
 
 ## Steps to configure scan host
 ```
 1. Clone the repository from GitHub and move it to your Ansible Control Host:
-    git clone <<TBD>>
+    git clone https://github.com/VeritasOS/netbackup-scanhost-config.git
 2. By default, the host key checking would happen before configuring the scan host.
     To add the fingerprint of the scan host for Linux hosts, perform the following:
         1. `ssh-keyscan -H {{HOST}} >> ~/.ssh/known_hosts` or manually perform SSH to the scan host.
@@ -109,12 +115,12 @@ windowsScanHosts:
 | Parameter name                        | Default value (If applicable) | Descripton                                                                                                       |
 |-----------------------------------|-------------------------------|------------------------------------------------------------------------------------------------------------------|
 | configure_nfs                    |  True                        | Enables `NFS-Client` feature if the value is `True`                                                              |
-| install_vc_runtime               | True                         | Installs `vc-runtime` if the value is `True`. Note that this would take much long time                   |
+| install_vc_runtime               | True                         | Installs `vc-runtime` if the value is `True`.                |
 | override_openssh                 | False                         | Overrides openssh configuration if the value is `True`                                                           |
 | openssh_download_url             | [OPENSSH](https://github.com/PowerShell/Win32-OpenSSH/releases/download/v9.4.0.0p1-Beta/OpenSSH-Win64.zip) | Default URL from which the OPENSSH package would be installed |
 | user_uid                         | 1000                          | User uid to be used for mapping to the windows non administrator user                                           |
 | ansible_connection               | winrm                         | Connection is used for connecting                                                                 |
-| ansible_winrm_port               | 5985                          | Port used for connecting                                                                         |
+| ansible_winrm_port               | 5985                          | Port used for connecting, this port should be open on the scan host.                                                                        |
 | ansible_winrm_transport          | ntlm                          | Transport used for connecting                                                                       |
 | ansible_winrm_server_cert_validation |   validate             | Default cert validation would happen before connecting, if set to `ignore` then the cert validation would not happen |
 

@@ -1,0 +1,29 @@
+#
+# $Copyright: Copyright (c) 2024 Veritas Technologies LLC. All rights reserved VT25-0977-2658-84-51-3 $
+#
+
+- name: Create temporary directory
+  win_file:
+    path: "{{ openssh_temporary_dir }}"
+    state: directory
+
+- name: Get openssh for windows release
+  win_get_url:
+    url: "{{ openssh_download_url }}"
+    dest: "{{ openssh_temporary_dir }}\\openssh.zip"
+    force: no
+
+- name: Unzip openssh in extraction dir
+  win_unzip:
+    src: "{{ openssh_temporary_dir }}\\openssh.zip"
+    dest: "{{ openssh_extract_dir }}"
+    creates: "{{ openssh_extract_dir }}"
+
+- name: Run installation script && Configure SSH Port
+  win_shell: |
+    powershell.exe -ExecutionPolicy Bypass -File {{ openssh_extract_dir }}\\{{ openssh_archive_name }}\\install-sshd.ps1
+    New-NetFirewallRule -DisplayName "SSH TCP PORT 22" -Direction inbound -Profile Any -Action Allow -LocalPort 22 -Protocol TCP
+    Enable-NetFirewallRule -DisplayName "SSH TCP PORT 22"
+  register: test_var_ssh_port
+  notify:
+    - restart sshd
