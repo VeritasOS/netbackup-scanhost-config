@@ -23,7 +23,7 @@ fi
 
 # Determine os
 os=rhel
-if  cat /etc/os-release | grep ^ID= | grep sled > /dev/null; then
+if  ls -l /usr/bin/zypper > /dev/null 2>&1; then
     os='suse'
 fi
 
@@ -31,12 +31,22 @@ fi
 if [ $os = 'suse' ]; then
     if ! zypper search --installed-only jq  >/dev/null 2>&1; then
         echo "Installing jq";
-        zypper -n install jq > /dev/null 2>&1;
+        if zypper -n install jq > /dev/null 2>&1; then
+            echo "Installed jq";
+        else
+            echo "Failed to install jq, error code: $?";
+            exit;
+        fi
     fi
 else
     if ! yum list installed jq  >/dev/null 2>&1; then
         echo "Installing jq";
-        yum install jq -y > /dev/null 2>&1;
+        if yum install jq -y > /dev/null 2>&1; then
+            echo "Installed jq";
+        else
+            echo "Failed to install jq, error code: $?";
+            exit;
+        fi
     fi
 fi
 
@@ -44,7 +54,7 @@ install_avira=$(jq .install_avira inputs.json);
 
 avira_package_path=$(jq .avira_package_path inputs.json);
 if [ $avira_package_path = 'null' ] && [ $install_avira = true ]; then
-    echo "Install avira is set to $install_avira and avira_package_path is not provided, exiting"
+    echo "Install avira is set to $install_avira and avira_package_path does not exists, exiting"
     exit
 fi
 
@@ -55,6 +65,11 @@ avira_package_path=${avira_package_path::-1};
 # Removes first double quote character
 # "/tmp/test.zip -> /tmp/test.zip
 avira_package_path=${avira_package_path:1};
+
+if $install_avira = true && ! ls -l $avira_package_path  >/dev/null 2>&1; then
+    echo "Install avira is set to $install_avira and avira_package_path does not exists, exiting"
+    exit
+fi
 
 scan_user=$(jq .scan_user inputs.json);
 if [ $scan_user = 'null' ]; then
@@ -92,6 +107,7 @@ run_command() {
     else
         $1 | tee configure.log
     fi
+    return $?;
 }
 
 # Install packages
@@ -147,36 +163,60 @@ if [ $check = false ]; then
     if [ $libnsl_installed = false ]; then
         echo "Installing libnsl";
         if [ $os = 'suse' ]; then
-            run_command 'zypper -n install libnsl*';
+            if run_command 'zypper -n install libnsl*'; then
+                echo "Installed libnsl";
+            else
+                echo "Failed to install libnsl";
+            fi
         else
-            run_command 'yum install libnsl* -y';
+            if run_command 'yum install libnsl* -y'; then
+                echo "Installed libnsl";
+            else
+                echo "Failed to install libnsl";
+            fi
         fi
-        echo "Installed libnsl";
         echo;
     fi
 
     if [ $nfs_client = false ]; then
         echo "Installing nfs-client";
         if [ $os = 'suse' ]; then
-            run_command 'zypper -n install nfs-client';
+            if run_command 'zypper -n install nfs-client'; then
+                run_command 'systemctl start nfs-client.target';
+                run_command 'systemctl enable nfs-client.target';
+                run_command 'systemctl status nfs-client.target';
+                echo "Installed and started nfs-client service";
+            else
+                echo "Faild to install nfs-client";
+            fi
         else
-            run_command 'yum install nfs-utils* -y';
+            if run_command 'yum install nfs-utils* -y'; then
+                run_command 'systemctl start nfs-client.target';
+                run_command 'systemctl enable nfs-client.target';
+                run_command 'systemctl status nfs-client.target';
+                echo "Installed and started nfs-client service";
+            else
+                echo "Faild to install nfs-client";
+            fi
         fi
-        run_command 'systemctl start nfs-client.target';
-        run_command 'systemctl enable nfs-client.target';
-        run_command 'systemctl status nfs-client.target';
-        echo "Installed and started nfs-client service";
         echo;
     fi
 
     if [ $smb_client = false ]; then
         echo "Installing smb-client";
         if [ $os = 'suse' ]; then
-            run_command 'zypper -n install cifs-utils';
+            if run_command 'zypper -n install cifs-utils'; then
+                echo "Installed cifs-utils(samba client)";
+            else
+                echo "Not installed cifs-utils(samba client)";
+            fi
         else
-           run_command 'yum install cifs-utils -y';
+           if run_command 'yum install cifs-utils -y'; then
+                echo "Installed cifs-utils(samba client)";
+           else
+                echo "Not installed cifs-utils(samba client)";
+           fi
         fi
-        echo "Installed cifs-utils(samba client)";
         echo;
     fi
 fi
@@ -205,14 +245,18 @@ if [ $(getent passwd $scan_user) ]; then
         home_dir=$(eval echo ~$scan_user)
         bashrc_path="${home_dir}/.bashrc"
 
-        str=$(grep NB_MALWARE_SCANNER_PATH $bashrc_path)
+        if ls -l $bashrc_path >/dev/null 2>&1; then
+            str=$(grep NB_MALWARE_SCANNER_PATH $bashrc_path)
 
-        existing_nb_malware_path=${str//"export NB_MALWARE_SCANNER_PATH="/ }
+            existing_nb_malware_path=${str//"export NB_MALWARE_SCANNER_PATH="/ }
 
-        if [ -z $existing_nb_malware_path ]; then
-            echo "NetBackup Malware Scanner does not exists";
+            if [ -z $existing_nb_malware_path ]; then
+                echo "NetBackup Malware Scanner does not exists";
+            else
+                echo "NetBackup Malware Scanner exists at path: $existing_nb_malware_path";
+            fi
         else
-            echo "NetBackup Malware Scanner exists at path: $existing_nb_malware_path";
+            echo "NetBackup Malware Scanner does not exists";
         fi
         exit
     fi
@@ -257,9 +301,10 @@ if [ $install_avira = true ]; then
     home_dir=$(eval echo ~$scan_user)
     bashrc_path="${home_dir}/.bashrc"
 
-    str=$(grep NB_MALWARE_SCANNER_PATH $bashrc_path)
-
-    existing_nb_malware_path=${str//"export NB_MALWARE_SCANNER_PATH="/ }
+    if ls -l $bashrc_path >/dev/null 2>&1; then
+        str=$(grep NB_MALWARE_SCANNER_PATH $bashrc_path 2>&1;)
+        existing_nb_malware_path=${str//"export NB_MALWARE_SCANNER_PATH="/ }
+    fi
 
     avira_install_location=$home_dir/avira
     mkdir -p $avira_install_location
@@ -299,7 +344,7 @@ if [ $install_avira = true ]; then
 
     echo "Updating virus information, this may take some time";
     cd $existing_nb_malware_path;
-    run_command "update.sh";
+    run_command "./update.sh";
     run_command "cd -";
     chown -R $scan_user:$scan_group $existing_nb_malware_path;
     echo "Updated virus information";

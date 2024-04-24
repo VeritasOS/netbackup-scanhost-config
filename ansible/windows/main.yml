@@ -17,11 +17,11 @@
 
     - set_fact:
         user_uid: 0
-      when: configure_scan_host_for_vmware is defined and configure_scan_host_for_vmware == True
+      when: scan_vm_backup is defined and scan_vm_backup == True
 
     - set_fact:
         user_uid: 1000
-      when: configure_scan_host_for_vmware is not defined or configure_scan_host_for_vmware == False
+      when: scan_vm_backup is not defined or scan_vm_backup == False
 
     - name: Configure variables
       set_fact:

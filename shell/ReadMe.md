@@ -2,16 +2,17 @@
     Version: 1.0
 
 ## Description
+- NetBackup footprint is not required on the scan host.
 - This utility installs and configures the prerequisites required to run a malware scan on the scan host (RHEL (8.x, 9.x) / SUSE 12 and above).
 - Additionally, this utility can be used to install `NetBackup Malware Scanner` on the scan host.
-- The following would be installed/configured by the utility on the scan hosts
-    <ul>
-    <li>Prerequisites installed: libnsl, NFS client, SMB client. </li>
-    <li>Configuration: Non root user creation. </li>
-    </ul>
-- By default this script runs as checker and verifies all the things required for malware scan to run. To install all the prerequisites use `--install` flag.
+- The following will be installed/configured by the utility on the scan hosts.
+    *  NFS client
+    *  SMB client
+    * Configuration: Non-root user creation
+- By default, this script runs as a checker and verifies all the things required for a malware scan to run. To install all the prerequisites use `--install` flag.
 
-## Initial prerequisites to be present on the scan host
+## Prerequisites
+Ensure that the following prerequisites are present on the scan host.
 - RHEL Version = 8.x, 9.x
 - Subscription manager attached
 - Internet connectivity required
@@ -19,29 +20,35 @@
 - Default login shell should be `bash`
 
 ## Steps to configure scan host
-```
-1. Clone the repository from GitHub
-    git clone https://github.com/VeritasOS/netbackup-scanhost-config.git
-2. Provide the scan host details in the `inputs.json` file. Refer `Terminologies` section for the complete list of options.
-    `install_avira`: Installs avira if set to `True`, defaults to False.
-    `avira_package_path`:(Optional) Local absolute path to the `NetBackup Malware Scanner` zip package (NBAntimalwareClient) which is available on the Veritas download center.
-4. Run the following command to run the script
-    sh configure-scanhost.sh [--verbose] [--install]
-```
+1. Clone the repository from GitHub and move it to your scan host.
+    * `git clone https://github.com/VeritasOS/netbackup-scanhost-config.git`
+2. Traverse to `netbackup-scanhost-config\shell`. (`cd netbackup-scanhost-config\shell`)
+3. Provide the required inputs in the `inputs.json` file. Refer `Terminologies` section for the complete list of inputs.
+    * `install_avira`: Installs `NetBackup Malware Scanner` if set to `true`, defaults to `false`.
+    * `avira_package_path`: (Required only if `install_avira` is set to `true`) Local absolute path to the `NetBackup Malware Scanner` zip package (NBAntimalwareClient) which is available on the Veritas download center.
+4. Run the following command.
+    * `sh configure-scanhost.sh [--verbose] [--install]`
+5. Use credentials displayed at the end of the script to register the scan host to netbackup primary server.
 
-## Terminologies (inputs.json)
-| Parameter name          | Default value (If applicable)           | Descripton |
-| --------------------|-----------------------------------------|---------|
-| install_avira       | False                                    | Installs `NetBackup Malware Scanner` if set to True|
-| avira_package_path  |  | Local absolute path of the NetBackup Malware Scanner package|
-| scan_user           | scanuser                                | The user will be created if it does not exist on the scan host and NetBackup Malware Scanner will be configured using the same user|
-| scan_group          | scangroup                               | This group would be created on the requested host if it does not exist and `scan_user` will be added in the same group |
-| scan_user_password  | scanUserPassw0rd                        | This would be the password for `scan_user`, if not provided then password would not be set |
+## Terminologies
+Below is the complete list of inputs that can be used in `inputs.json` file.
 
-### Additional details
+| Parameter name      | Default value                           | Description                                                                                                                          |
+| --------------------|-----------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| install_avira       | false                                   | Installs `NetBackup Malware Scanner` if set to `true`                                                                                |
+| avira_package_path  |                                         | Local absolute path of the `NetBackup Malware Scanner` package                                                                       |
+| scan_user           | scanuser                                | The user will be created if it does not exist on the scan host and `NetBackup Malware Scanner` will be configured using the same user|
+| scan_group          | scangroup                               | This group would be created on the requested host if it does not exist and `scan_user` will be added in the same group               |
+| scan_user_password  | P@ssw0rd321#1                           | This would be the password for `scan_user`, if not provided then password would not be set                                           |
+
+## Additional details
 - Available flags
-    1. --install - This installs the prerequisites required to run the malware scan on the scan host. This script also can be used to configure `NetBackup Malware Scanner`.
-    2. --verbose - This will print the actual command execution, increased output (can be used for debugging if needed).
+    1. --install - This installs the prerequisites required to run the malware scan on the scan host.
+    2. --verbose - This will print the actual command execution, and increase output (can be used for debugging if needed).
+
+- The output of the installation can be found in the config.log file.
+- If the user specified in `inputs.json` already exists on the host, the password for the user will be updated.
+- If **any package** is not installed, contact the operating system provider to add respective repositories and then run the script again or install the package manually.
 
 ## Legal Notice
 Legal Notice

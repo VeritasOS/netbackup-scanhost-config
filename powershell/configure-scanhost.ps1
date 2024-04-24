@@ -282,7 +282,7 @@ function ConfigureScanUser {
         }
 
         $uidMapping = "$scan_user`:x`:0`:0`:Description`:C`:\Users\$scan_user"
-        if (($scan_vm_backup -eq 1) -or ($scan_vm_backup -eq "1")) {
+        if ($scan_vm_backup -eq "true") {
             $uidMapping = "$scan_user`:x`:0`:0`:Description`:C`:\Users\$scan_user"
         } else {
             $uidMapping = "$scan_user`:x`:1000`:1000`:Description`:C`:\Users\$scan_user"
@@ -351,30 +351,33 @@ function InstallVCRuntime {
 }
 
 function InstallAviraTool {
-    $exitCode = -1
     $avira_path = (Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name NB_MALWARE_SCANNER_PATH).NB_MALWARE_SCANNER_PATH
-    if (-not ($null -eq $avira_path)) {
-        $pinfo = New-Object System.Diagnostics.ProcessStartInfo
-        $pinfo.FileName = "$avira_path\avira_lib_dir_scan.exe"
-        $pinfo.RedirectStandardError = $true
-        $pinfo.RedirectStandardOutput = $true
-        $pinfo.UseShellExecute = $false
-        $pinfo.Arguments = "-v"
-        $p = New-Object System.Diagnostics.Process
-        $p.StartInfo = $pinfo
-        $p.Start() | Out-Null
-        $stdout = $p.StandardOutput.ReadToEnd().Replace("`n","")
-        $p.WaitForExit()
-        $exitCode = $p.ExitCode
-        if ($exitCode -eq 0) {
-            Write-Host @greenCheck
-            Write-Host " NetBackup-Malware-Scanner | $stdout" -ForegroundColor Green
-        }
-    } elseif (-not ($exitCode -eq 0)) {
-        if ($check_configuration -eq 1) {
+    if ($check_configuration -eq 1) {
+        $exitCode = -1
+        if (-not ($null -eq $avira_path)) {
+            $pinfo = New-Object System.Diagnostics.ProcessStartInfo
+            $pinfo.FileName = "$avira_path\avira_lib_dir_scan.exe"
+            $pinfo.RedirectStandardError = $true
+            $pinfo.RedirectStandardOutput = $true
+            $pinfo.UseShellExecute = $false
+            $pinfo.Arguments = "-v"
+            $p = New-Object System.Diagnostics.Process
+            $p.StartInfo = $pinfo
+            $p.Start() | Out-Null
+            $stdout = $p.StandardOutput.ReadToEnd().Replace("`n","")
+            $p.WaitForExit()
+            $exitCode = $p.ExitCode
+            if ($exitCode -eq 0) {
+                Write-Host @greenCheck
+                Write-Host " NetBackup-Malware-Scanner | $stdout" -ForegroundColor Green
+            } else {
+                Write-Host "! Error while checking NetBackup-Malware-Scanner version" -ForegroundColor Yellow
+            }
+        } else {
             Write-Host @cross
             Write-Host " NetBackup-Malware-Scanner" -ForegroundColor Red
-        } else {
+        }
+    } else {
         #---------------------------------------------------INSTALL AVIRA--------------------------------------------------------#
         Write-Host "`nInstalling NetBackup-Malware-Scanner"
         $avira_package_path = $inputs.avira_package_path
@@ -395,26 +398,43 @@ function InstallAviraTool {
                     Write-Host "`Could not create path $avira_installation_path. Aborting NetBackup-Malware-Scanner installation ..." -ForegroundColor Red
                     return
                 }
-
             }
             Expand-Archive $avira_package_path -DestinationPath $avira_installation_path -Force
             Copy-Item -Path "$avira_installation_path\NBAntiMalwareClient_2.4_AMD64\*" -Destination $avira_installation_path -Recurse
             Expand-Archive "$avira_installation_path\savapi-sdk-win64.zip" -DestinationPath "$avira_installation_path\savapi-sdk-win64" -Force
+            if (-not ($null -eq $avira_path)) {
+                Write-Host "NetBackup-Malware-Scanner installed successfully at $avira_path" -ForegroundColor Green
+                Move-Item -Path "$avira_installation_path\savapi-sdk-win64\bin\*" -Destination $avira_path -Force
+                Remove-Item -Path "$avira_installation_path\NBAntiMalwareClient_2.4*" -Recurse
+                Write-Host "Updating NetBackup-Malware-Scanner ..."
+                $currentLocation = $pwd.Path
+                Set-Location -Path $avira_path
+                .\update.bat | Out-File config.log
+                if ($?) {
+                    Write-Host "NetBackup-Malware-Scanner updated successfully`n" -ForegroundColor Green
+                } else {
+                    Write-Host "Could not update NetBackup-Malware-Scanner`n" -ForegroundColor Yellow
+                }
+                Set-Location $currentLocation
+                return
+            }
             Remove-Item -Path "$avira_installation_path\NBAntiMalwareClient_2.4*" -Recurse
             Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name NB_MALWARE_SCANNER_PATH -Value "$avira_installation_path\savapi-sdk-win64\bin"
             Write-Host "NetBackup-Malware-Scanner installed successfully at $avira_installation_path" -ForegroundColor Green
             Write-Host "Updating NetBackup-Malware-Scanner ..."
-            Start-Process -Wait -FilePath "$avira_installation_path\savapi-sdk-win64\bin\update.bat" -NoNewWindow
+            $currentLocation = $pwd.Path
+            Set-Location -Path "$avira_installation_path\savapi-sdk-win64\bin\"
+            .\update.bat | Out-File config.log
             if ($?) {
                 Write-Host "NetBackup-Malware-Scanner updated successfully`n" -ForegroundColor Green
             } else {
                 Write-Host "Could not update NetBackup-Malware-Scanner`n" -ForegroundColor Yellow
             }
+            Set-Location $currentLocation
         } else {
             Write-Host "$avira_package_path does not exist" -ForegroundColor Red
         }
         #------------------------------------------------------------------------------------------------------------------------#
-        }
     }
 }
 
@@ -499,9 +519,16 @@ if (-not $valid) {
 }
 
 # Check for mandatory inputs
-if (($null -eq $inputs.scan_user) -or ($null -eq $inputs.scan_group) -or ($null -eq $inputs.scan_user_password) -or ($null -eq $inputs.scan_vm_backup) -or ($null -eq $inputs.vcruntime_download_url) -or ($null -eq $inputs.openssh_download_url) -and ($check_configuration -eq 0)) {
-    Write-Host "`nProvide the mandatory parameters in inputs.json - scan_user, scan_group, scan_user_password, scan_vm_backup, vcruntime_download_url, openssh_download_url"
+if (($null -eq $inputs.scan_user) -or ($null -eq $inputs.scan_group) -or ($null -eq $inputs.scan_user_password) -or ($null -eq $inputs.scan_vm_backup) -or ($null -eq $inputs.vcruntime_download_url) -or ($null -eq $inputs.openssh_download_url) -or ($null -eq $inputs.install_avira) -and ($check_configuration -eq 0)) {
+    Write-Host "`nProvide the mandatory parameters in inputs.json - scan_user, scan_group, scan_user_password, scan_vm_backup, vcruntime_download_url, openssh_download_url, install_avira"
     exit
+}
+
+if ($inputs.install_avira -eq "true") {
+    if (($null -eq $inputs.avira_package_path) -or -not (Test-Path -Path $inputs.avira_package_path)) {
+        Write-Host "avira_package_path does not exist" -ForegroundColor Red
+        exit
+    }
 }
 
 # SSL/TLS Secure Channel (Protocols needed for windows server 2016)
@@ -517,6 +544,9 @@ ConfigureScanUser
 InstallOpenSSH
 InstallVCRuntime
 InstallAviraTool
+if ($inputs.install_avira -eq "false" -and $check_configuration -eq 0) {
+    Write-Host "! Not installing NetBackup Malware Scanner as install_avira is set to false" -ForegroundColor Yellow
+}
 UseUnicodeUTF8
 
 if (Get-LocalUser -Name $inputs.scan_user) {

@@ -2,8 +2,9 @@
     "scan_user" : "scanuser",
     "scan_group" : "scangroup",
     "scan_user_password" : "P@ssw0rd321#1",
+    "install_avira" : "false",
     "avira_package_path" : "<local_absolute_path_to_the_NBAntiMalwareClient_x.y.zip>",
-    "scan_vm_backup" : 0,
+    "scan_vm_backup" : "false",
     "vcruntime_download_url" : "https://aka.ms/vs/17/release/vc_redist.x64.exe",
     "openssh_download_url":"https://github.com/PowerShell/Win32-OpenSSH/releases/download/v9.4.0.0p1-Beta/OpenSSH-Win64.zip"
 }
