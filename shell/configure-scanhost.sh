@@ -264,8 +264,8 @@ else
     if [ $check = false ]; then
         printf 'Creating user %s \n' "$scan_user"
         run_command "useradd -s /bin/bash ${scan_user} -g ${scan_group} -m";
-        if [ $scan_user_password = 'null' ]; then
-            echo "Not Setting Password"
+        if [ -z $scan_user_password ] || [ $scan_user_password = 'null' ]; then
+            echo "Not Setting Password";
         else
             echo "Setting/Updating password for $scan_user";
             echo $scan_user:$scan_user_password | chpasswd
@@ -360,8 +360,15 @@ if [ $check = false ]; then
     rsakey=${rsakey::-1};
 
     echo;
-    echo "Use the following credentials (use value of scan_user_password for password)";
+    str="Use the following credentials";
+    if [ -z $scan_user_password ] || [ $scan_user_password = 'null' ]; then
+        str+="password not set/updated, you need to set/obtain the password for $scan_user)";
+    else
+       str+="(use value of scan_user_password for password)";
+    fi
+
     echo "====================================================================";
+    echo $str;
     echo "hostname: $host_name";
     echo "username: $scan_user";
     echo "rsakey: $rsakey";

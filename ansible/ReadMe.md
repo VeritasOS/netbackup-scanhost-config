@@ -53,7 +53,7 @@ all:
     avira_package_path: <local_absolute_path_to_the_NBAntiMalwareClient_x.y.zip>
     scan_user: scanuser
     scan_group: scangroup
-    scan_user_password: scanUserPassw0rd
+    scan_user_password: "" # This password will be set/updated for the above scan_user
 
 linuxScanHosts:
   vars:
@@ -73,7 +73,7 @@ all:
     avira_package_path: <local_absolute_path_to_the_NBAntiMalwareClient_x.y.zip>
     scan_user: scanuser
     scan_group: scangroup
-    scan_user_password: scanUserPassw0rd
+    scan_user_password: "" # This password will be set/updated for the above scan_user
 
 windowsScanHosts:
   vars:
@@ -101,7 +101,7 @@ windowsScanHosts:
 | avira_package_path  |                                         | Local absolute path of the `NetBackup Malware Scanner` package                                                                       |
 | scan_user           | scanuser                                | The user will be created if it does not exist on the scan host and `NetBackup Malware Scanner` will be configured using the same user|
 | scan_group          | scangroup                               | This group will be created on the requested host if it does not exist and `scan_user` will be added to the same group                |
-| scan_user_password  | P@ssw0rd321#1                           | This will be the password for `scan_user`, if not provided then password would not be set                                            |
+| scan_user_password  |                                         | This will be the password for `scan_user`, if not provided then password would not be set                                            |
 
 ### Linux
 | Parameter name              | Default value (If applicable) | Description                                                     |

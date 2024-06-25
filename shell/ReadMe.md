@@ -39,7 +39,7 @@ Below is the complete list of inputs that can be used in `inputs.json` file.
 | avira_package_path  |                                         | Local absolute path of the `NetBackup Malware Scanner` package                                                                       |
 | scan_user           | scanuser                                | The user will be created if it does not exist on the scan host and `NetBackup Malware Scanner` will be configured using the same user|
 | scan_group          | scangroup                               | This group would be created on the requested host if it does not exist and `scan_user` will be added in the same group               |
-| scan_user_password  | P@ssw0rd321#1                           | This would be the password for `scan_user`, if not provided then password would not be set                                           |
+| scan_user_password  |                                         | This would be the password for `scan_user`, if not provided then password would not be set                                           |
 
 ## Additional details
 - Available flags

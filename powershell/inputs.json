@@ -1,7 +1,7 @@
 {
     "scan_user" : "scanuser",
     "scan_group" : "scangroup",
-    "scan_user_password" : "P@ssw0rd321#1",
+    "scan_user_password" : "",
     "install_avira" : "false",
     "avira_package_path" : "<local_absolute_path_to_the_NBAntiMalwareClient_x.y.zip>",
     "scan_vm_backup" : "false",

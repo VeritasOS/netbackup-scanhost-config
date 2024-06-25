@@ -20,7 +20,15 @@
       register: sshKeyscanOutput
       when: grep_ssh_rsa.stdout | length > 0
 
+    - set_fact:
+        message: Use value of `scan_user_password` for password from inventory/hosts.yml
+      when: scan_user_password is defined and scan_user_password | length > 0
+
+    - set_fact:
+        message: "(password not set/updated, you need to set/obtain the password for {{scan_user}})`"
+      when: scan_user_password is undefined or scan_user_password == ''
+
     - name: Use Below Credentials to register scan-host in the webui
       debug:
-        msg: 'HostName: {{ ansible_ssh_host }}, UserName: {{scan_user is defined | ternary(scan_user, "root")}}, RSA Key : {{ sshKeyscanOutput.stdout[:-1] | trim }}, Use value of `scan_user_password` for password from inventory/hosts.yml'
+        msg: 'HostName: {{ ansible_ssh_host }}, UserName: {{scan_user is defined | ternary(scan_user, "root")}}, RSA Key : {{ sshKeyscanOutput.stdout[:-1] | trim }}, {{message}}'
       when: grep_ssh_rsa.stdout | length > 0

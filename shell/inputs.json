@@ -3,5 +3,5 @@
     "avira_package_path": "/tmp/NBAntiMalwareClient_2.4.zip",
     "scan_user" : "scanuser",
     "scan_group": "scangroup",
-    "scan_user_password": "P@ssw0rd321#1"
+    "scan_user_password": ""
 }
